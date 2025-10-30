@@ -19,7 +19,7 @@
   async function main() {
     const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const result = await model.generateContent("Dame un mensaje de amor super corto de promedio un linea");
+    const result = await model.generateContent("Dame una frase corta de buenos deseos de cumpleños");
     const text = result.response.text();
     document.getElementById("mensaje").textContent = text;
     console.log(text);
