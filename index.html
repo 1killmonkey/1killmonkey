@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Example</title>
+</head>
+<body>
+
+  <label id="mensaje"></label>
+</body>
+<script type="module">
+  // Importa desde un CDN compatible con navegador
+  import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+  // 🔑 Aquí colocas tu API key de Gemini
+  const ai = new GoogleGenerativeAI("AIzaSyC3b1bk3UxChWs-zeL7sWUN-c4HXk6ksww");
+
+  async function main() {
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const result = await model.generateContent("Dame un mensaje de amor super corto de promedio un linea");
+    const text = result.response.text();
+    document.getElementById("mensaje").textContent = text;
+    console.log(text);
+    alert(text);
+  }
+
+  await main();
+</script>
+</html>
