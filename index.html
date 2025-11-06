@@ -1,31 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gemini Example</title>
+  <title>Gemini 3D Chat</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #101010;
+      color: white;
+      font-family: sans-serif;
+    }
+    #chat {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      width: 90%;
+      display: flex;
+      gap: 8px;
+    }
+    #userInput {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    #sendBtn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      background-color: #0078ff;
+      color: white;
+      cursor: pointer;
+    }
+    #mensaje {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 18px;
+      color: #fff;
+      max-width: 80%;
+    }
+  </style>
 </head>
 <body>
+  <div id="mensaje">Cargando modelo...</div>
+  <div id="chat">
+    <input id="userInput" placeholder="Escribe tu mensaje..." />
+    <button id="sendBtn">Enviar</button>
+  </div>
 
-  <label id="mensaje"></label>
-</body>
-<script type="module">
-  // Importa desde un CDN compatible con navegador
-  import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+  <script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+    import * as THREE from "https://esm.run/three";
+    import { GLTFLoader } from "https://esm.run/three/examples/jsm/loaders/GLTFLoader.js";
+    import { OrbitControls } from "https://esm.run/three/examples/jsm/controls/OrbitControls.js";
 
-  // 🔑 Aquí colocas tu API key de Gemini
-  const ai = new GoogleGenerativeAI("AIzaSyC3b1bk3UxChWs-zeL7sWUN-c4HXk6ksww");
-
-  async function main() {
+    // 🔑 Coloca aquí tu API key
+    const ai = new GoogleGenerativeAI("AIzaSyC3b1bk3UxChWs-zeL7sWUN-c4HXk6ksww");
     const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const result = await model.generateContent("Dame una frase corta de buenos deseos de cumpleños");
-    const text = result.response.text();
-    document.getElementById("mensaje").textContent = text;
-    console.log(text);
-    alert(text);
-  }
+    const label = document.getElementById("mensaje");
+    const input = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-  await main();
-</script>
+    // 🎮 Escena básica
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x101010);
+    document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(3, 3, 3);
+    scene.add(light);
+
+    const ambient = new THREE.AmbientLight(0x404040, 1.2);
+    scene.add(ambient);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    camera.position.set(0, 0, 3);
+    controls.update();
+
+    let model3D;
+    const loader = new GLTFLoader();
+    loader.load(
+      "./hitem3d.glb",
+      (gltf) => {
+        model3D = gltf.scene;
+        model3D.scale.set(1, 1, 1);
+        scene.add(model3D);
+        label.textContent = "✅ Modelo cargado. Escribe algo para hablar.";
+      },
+      (progress) => {
+        label.textContent = `Cargando modelo: ${(progress.loaded / progress.total * 100).toFixed(0)}%`;
+      },
+      (error) => {
+        console.error("Error al cargar modelo:", error);
+      }
+    );
+
+    // 🔊 Función para hablar texto
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "es-ES";
+      utter.pitch = 1;
+      utter.rate = 1;
+      speechSynthesis.speak(utter);
+
+      // Simulación de movimiento de labios durante el habla
+      const interval = setInterval(() => {
+        if (model3D) {
+          const mouth = model3D.getObjectByName("Mouth") || model3D; // si hay un hueso llamado "Mouth"
+          if (mouth) mouth.rotation.x = Math.sin(Date.now() * 0.02) * 0.1;
+        }
+      }, 50);
+
+      utter.onend = () => {
+        clearInterval(interval);
+        if (model3D) {
+          const mouth = model3D.getObjectByName("Mouth") || model3D;
+          if (mouth) mouth.rotation.x = 0;
+        }
+      };
+    }
+
+    // 🧠 Enviar mensaje al modelo y mostrar respuesta
+    async function sendMessage() {
+      const userText = input.value.trim();
+      if (!userText) return;
+      label.textContent = "Pensando...";
+      input.value = "";
+
+      const result = await model.generateContent(userText);
+      const reply = result.response.text();
+      label.textContent = reply;
+
+      speak(reply);
+    }
+
+    sendBtn.onclick = sendMessage;
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    // 🎬 Animación
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
 </html>
